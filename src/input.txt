@@ -1,0 +1,18 @@
+CREATE
+<note>
+  <guid>FCD4BE3B-C5F2-4183-B349-63C5C84E7439</guid>
+  <created>2014-01-22T10:11:33Z</created>
+  <tag>todo</tag>
+  <content>
+    * TODO List *
+
+    1. -Make TODO List-
+    2. Reply to urgent emails
+    3. Fix bug 78722
+    4. Prepare for architecture design meeting
+  </content>
+</note>
+SEARCH
+make
+SEARCH
+Fixaaa
