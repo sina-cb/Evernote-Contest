@@ -1,7 +1,6 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -9,6 +8,7 @@ import java.io.OutputStreamWriter;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -18,187 +18,105 @@ import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.Vector;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Solution implements Runnable{
+public class Solution{
 
 	public static void main(String[] args){
 		Solution obj = new Solution();
-		new Thread(obj).start();
-
-	}
-
-	NoteHolder noteHolder = new NoteHolder();
-	static BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(System.out));
-	static BufferedReader br;
-	//BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-	
-	static ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-	static Lock readLock = lock.readLock();
-	static Lock writeLock = lock.writeLock();
-
-	public void run() {
-
 		try {
-			br = new BufferedReader(new FileReader(new File("/home/sina/workspace/Evernote Contest/src/input.txt")));
-		} catch (FileNotFoundException e2) {
-			// TODO Auto-generated catch block
-			e2.printStackTrace();
-		}
-		
-		long firstTime = System.currentTimeMillis();
-
-		//
-		
-		try {
-			/* This list is used to read all lines of the <note> tag and process them all together.
-			 * It helps making the process of passing data to the createNote method much easier. */
-			Vector<String> lines = null;
-
-			String line = br.readLine();
-			while(line != null){
-				switch (line) {
-				case "CREATE":
-					(new Thread(new Runnable() {
-						@Override
-						public void run() {
-							writeLock.lock();
-							Vector<String> lines = null;
-							try {
-								lines = new Vector<String>();
-								String lineFinalUpdate = br.readLine();
-								while(!lineFinalUpdate.contains("</note>")){
-									lines.add(lineFinalUpdate);
-
-									lineFinalUpdate = br.readLine();
-								}
-							}catch(IOException e){
-
-							}
-							Note newNote = new Note();
-							newNote.createNote(lines);
-							noteHolder.addNewNote(newNote);
-							writeLock.unlock();
-						}
-					})).start();
-					break;
-
-				case "UPDATE":
-					(new Thread(new Runnable() {
-						@Override
-						public void run() {
-							writeLock.lock();
-							Vector<String> lines = null;
-							try {
-								lines = new Vector<String>();
-								String lineFinalUpdate = br.readLine();
-								while(!lineFinalUpdate.contains("</note>")){
-									lines.add(lineFinalUpdate);
-
-									lineFinalUpdate = br.readLine();
-								}
-							}catch(IOException e){
-
-							}
-							Note updatedNote = new Note();
-							updatedNote.createNote(lines);
-							noteHolder.updateNote(updatedNote);
-							writeLock.unlock();
-						}
-					})).start();
-					break;
-
-				case "DELETE":
-					final String lineFinalDelete = br.readLine();
-					(new Thread(new Runnable() {
-						@Override
-						public void run() {
-							writeLock.lock();
-							noteHolder.delete(lineFinalDelete);
-							writeLock.lock();
-						}
-					})).start();
-
-					break;
-
-				case "SEARCH":
-					final String lineFinalSearch = br.readLine();
-
-					(new Thread(new Runnable() {
-						@Override
-						public void run() {
-							try {
-								readLock.lock();
-								noteHolder.search(lineFinalSearch);
-								readLock.unlock();
-							} catch (IOException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-						}
-					})).start();
-
-					break;
-
-				default:
-					bw.write(line + "\n");
-					break;
-				}
-
-				line = br.readLine();
-			}
-
-			readLock.lock();
-			br.close();
-			bw.write("\n\n\n" + ((System.currentTimeMillis() - firstTime) / 1000.0) + "\n");
-			bw.flush();
-			readLock.unlock();
-
-		} catch (FileNotFoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}catch (IOException e) {
+			obj.run();
+		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
-	private class NoteHolder{
+	NoteHolder noteHolder = new NoteHolder();
+	BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(System.out));
 
+	public void run() throws IOException {
+		long firstTime = System.currentTimeMillis();
+
+		BufferedReader br = new BufferedReader(new FileReader(new File("C:\\Users\\Sina\\Documents\\GitHub\\Evernote Contest\\src\\input.txt")));
+		//BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+		/* This list is used to read all lines of the <note> tag and process them all together.
+		 * It helps making the process of passing data to the createNote method much easier. */
+		Vector<String> lines = null;
+
+		String line = br.readLine();
+		while(line != null){
+			switch (line) {
+			case "CREATE":
+				lines = new Vector<String>();
+				line = br.readLine();
+				while(!line.contains("</note>")){
+					lines.add(line);
+					line = br.readLine();
+				}
+				Note newNote = new Note();
+				newNote.createNote(lines);
+				noteHolder.addNewNote(newNote);
+				break;
+
+			case "UPDATE":
+				lines = new Vector<String>();
+				line = br.readLine();
+				while(!line.contains("</note>")){
+					lines.add(line);
+					line = br.readLine();
+				}
+				Note updatedNote = new Note();
+				updatedNote.createNote(lines);
+				noteHolder.updateNote(updatedNote);
+				break;
+
+			case "DELETE":
+				line = br.readLine();
+				noteHolder.delete(line);
+				break;
+
+			case "SEARCH":
+				line = br.readLine();
+				noteHolder.search(line);
+				break;
+
+			default:
+				bw.write(line + "\n");
+				break;
+			}
+
+			line = br.readLine();
+		}
+		br.close();
+
+		bw.write("\n\n\n" + ((System.currentTimeMillis() - firstTime) / 1000.0) + "\n");
+		bw.close();
+	}
+
+	private class NoteHolder{
+		int trashedNotes = 0;
 		Vector<Note> notes;
 		HashMap<String, Integer> guidToPositionIndex;
-		HashMap<String, Vector<String>> dateToGuidIndex;
-		HashMap<String, Vector<String>> tagToGuidIndex;
+		SortedVector dateToGuidIndex;
+		SortedVector tagToGuidIndex;
 
 		public NoteHolder(){
 			notes = new Vector<Solution.Note>();
 			notes.ensureCapacity(1000000);
 
 			guidToPositionIndex = new HashMap<String, Integer>();
-			dateToGuidIndex = new HashMap<String, Vector<String>>();
-			tagToGuidIndex = new HashMap<String, Vector<String>>();
+			dateToGuidIndex = new SortedVector();
+			tagToGuidIndex = new SortedVector();
 		}
 
-		int trashedNotes = 0;
-
 		public Note findNoteByGUID(String guid) {
-			try{
-				int index = guidToPositionIndex.get(guid);
-				if (index != -1){
-					return notes.get(index);
-				}
-
-			}catch (NullPointerException e){
-
-				System.out.println("");
-
+			int index = guidToPositionIndex.get(guid);
+			if (index != -1){
+				return notes.get(index);
 			}
-
-
-
 
 			return null;
 		}
@@ -238,7 +156,6 @@ public class Solution implements Runnable{
 
 			Comparator<Note> compareNotes = new Comparator<Solution.Note>() {
 
-				@Override
 				public int compare(Note o1, Note o2) {
 					return o1.getCreated().compareTo(o2.getCreated());
 				}
@@ -263,19 +180,20 @@ public class Solution implements Runnable{
 
 			for (String term : terms){
 				Set<String> localGuids = new HashSet<String>();
-				for (Object tag : tagToGuidIndex.keySet().toArray()){
+				for (int i = 0; i < tagToGuidIndex.size(); i++){
+					String tag = tagToGuidIndex.get(i).key;
 					if (term.endsWith("*")){
 						String tempTerm = term.substring(0, term.length() - 1);
 						String regex = String.format(".*^%s.*|.*\\s%s.*", tempTerm, tempTerm);
 						Matcher m = (Pattern.compile(regex)).matcher((String) tag);
 						if (m.find()){
-							localGuids.addAll(tagToGuidIndex.get(tag));
+							localGuids.addAll(tagToGuidIndex.get(i).guids);
 						}
 					}else{
 						String regex = ".*\\b" + term + "\\b.*";
 						Matcher m = (Pattern.compile(regex)).matcher((String) tag);
 						if (m.find()){
-							localGuids.addAll(tagToGuidIndex.get(tag));
+							localGuids.addAll(tagToGuidIndex.get(i).guids);
 						}
 					}
 				}
@@ -304,15 +222,12 @@ public class Solution implements Runnable{
 		private Vector<Note> dateSearch(String searchTerm){
 			Vector<Note> results = new Vector<Note>();
 			searchTerm = searchTerm.substring("created:".length());
-			Object[] dates = dateToGuidIndex.keySet().toArray();
-			for (int i = dates.length - 1; i >= 0; i--){
-				if (((String)dates[i]).compareTo(searchTerm) >= 0){
-					Vector<String> guids = dateToGuidIndex.get(dates[i]);
+			for (int i = dateToGuidIndex.size() - 1; i >= 0; i--){
+				if ((dateToGuidIndex.get(i).key).compareTo(searchTerm) >= 0){
+					Vector<String> guids = dateToGuidIndex.get(i).guids;
 
-					synchronized (guids) {
-						for (String guid : guids){
-							results.add(findNoteByGUID(guid));
-						}
+					for (String guid : guids){
+						results.add(findNoteByGUID(guid));
 					}
 				}
 			}
@@ -328,32 +243,30 @@ public class Solution implements Runnable{
 			Vector<Note> results = new Vector<Solution.Note>();
 			String[] terms = searchTerm.toLowerCase().split("\\s");
 
-			synchronized (notes) {
-				for (Note note : notes){
-					if (note.isTrash()){
-						continue;
-					}
-					boolean hasAll = true;
-					String text = note.content.toLowerCase();
-					for (String term : terms){
-						if (term.endsWith("*")){
-							term = term.substring(0, term.length() - 1);
-							String regex = String.format(".*^%s.*|.*\\s%s.*", term, term);
-							Matcher m = (Pattern.compile(regex)).matcher(text);
-							if (!m.find()){
-								hasAll = false;
-							}
-						}else{
-							String regex = ".*\\b" + term + "\\b.*";
-							Matcher m = (Pattern.compile(regex)).matcher(text);
-							if (!m.find()){
-								hasAll = false;
-							}
+			for (Note note : notes){
+				if (note.isTrash()){
+					continue;
+				}
+				boolean hasAll = true;
+				String text = note.content.toLowerCase();
+				for (String term : terms){
+					if (term.endsWith("*")){
+						term = term.substring(0, term.length() - 1);
+						String regex = String.format(".*^%s.*|.*\\s%s.*", term, term);
+						Matcher m = (Pattern.compile(regex)).matcher(text);
+						if (!m.find()){
+							hasAll = false;
+						}
+					}else{
+						String regex = ".*\\b" + term + "\\b.*";
+						Matcher m = (Pattern.compile(regex)).matcher(text);
+						if (!m.find()){
+							hasAll = false;
 						}
 					}
-					if (hasAll){
-						results.add(note);
-					}
+				}
+				if (hasAll){
+					results.add(note);
 				}
 			}
 
@@ -392,9 +305,11 @@ public class Solution implements Runnable{
 			target.setTrash(true);
 			guidToPositionIndex.remove(target.getGuid());
 
-			Vector<String> bucket = dateToGuidIndex.get(dateToString(target.getCreated()));
+			int tempIndex = dateToGuidIndex.indexOf(new Tuple(dateToString(target.getCreated()), null));
+			Vector<String> bucket = null;
 			int deletionIndex = -1;
-			if (bucket != null){
+			if (tempIndex >= 0){
+				bucket = dateToGuidIndex.get(tempIndex).guids;
 				for (int i = 0; i < bucket.size(); i++){
 					if (bucket.get(i).equals(target.getGuid())){
 						deletionIndex = i;
@@ -407,8 +322,9 @@ public class Solution implements Runnable{
 			}
 
 			for (String tag : target.getTags()){
-				bucket = tagToGuidIndex.get(tag);
-				if(bucket != null){
+				tempIndex = tagToGuidIndex.indexOf(new Tuple(tag, null));
+				if(tempIndex >= 0){
+					bucket = tagToGuidIndex.get(tempIndex).guids;
 					deletionIndex = -1;
 					for (int i = 0; i < bucket.size(); i++){
 						if (bucket.get(i).equals(target.getGuid())){
@@ -437,8 +353,6 @@ public class Solution implements Runnable{
 
 			notes = onlyValidNotes;
 			guidToPositionIndex = new HashMap<String, Integer>();
-			dateToGuidIndex = new LinkedHashMap<String, Vector<String>>();
-			tagToGuidIndex = new LinkedHashMap<String, Vector<String>>();
 
 			for (int i = 0; i < onlyValidNotes.size(); i++){
 				guidToPositionIndex.put(notes.get(i).getGuid(), (Integer) i);
@@ -451,22 +365,26 @@ public class Solution implements Runnable{
 
 			guidToPositionIndex.put(note.getGuid(), notes.size() - 1);
 
-			Vector<String> bucket = dateToGuidIndex.get(dateToString(note.getCreated())); 
-			if (bucket == null){
+			int tempIndex = dateToGuidIndex.indexOf(new Tuple(dateToString(note.getCreated()), null));
+			Vector<String> bucket = null;
+			if (tempIndex < 0){
 				bucket = new Vector<String>();
 				bucket.add(note.getGuid());
-				dateToGuidIndex.put(dateToString(note.getCreated()), bucket);
+				dateToGuidIndex.insert(new Tuple(dateToString(note.getCreated()), bucket));
 			}else{
+				bucket = dateToGuidIndex.get(tempIndex).guids;
 				bucket.add(note.getGuid());
 			}
 
 			for (String tag : note.getTags()){
-				bucket = tagToGuidIndex.get(tag); 
-				if (bucket == null){
+				tempIndex = tagToGuidIndex.indexOf(new Tuple(tag, null));
+
+				if (tempIndex < 0){
 					bucket = new Vector<String>();
 					bucket.add(note.getGuid());
-					tagToGuidIndex.put(tag, bucket);
+					tagToGuidIndex.insert(new Tuple(tag, bucket));
 				}else{
+					bucket = tagToGuidIndex.get(tempIndex).guids;
 					bucket.add(note.getGuid());
 				}
 			}
@@ -613,7 +531,6 @@ public class Solution implements Runnable{
 			this.content = content;
 		}
 
-		@Override
 		public String toString() {
 			StringBuilder sb = new StringBuilder();
 
@@ -640,6 +557,57 @@ public class Solution implements Runnable{
 
 		public void setTrash(boolean trash) {
 			this.trash = trash;
+		}
+	}
+
+	private class SortedVector extends Vector<Tuple>{
+
+		private static final long serialVersionUID = 3871496867211582390L;
+
+		public void insert(Tuple element){
+			add(element);
+			Collections.sort(this);
+		}
+
+		@Override
+		public int indexOf(Object o) {
+			return binary_search(this, (Tuple) o, 0, size() - 1);
+		}
+
+		private int binary_search(Vector<Tuple> array, Tuple key, int start, int end){
+			if (size() == 0){
+				return -1;
+			}
+			
+			while (end >= start){
+				int mid = ((end + start) / 2);
+
+				if(array.get(mid).compareTo(key) == 0){
+					return mid;
+				}else if (array.get(mid).compareTo(key) < 0){
+					start = mid + 1;
+				}else {
+					end = mid - 1;
+				}
+			}
+			return -1;
+		}
+
+	}
+
+	private class Tuple implements Comparable<Tuple>{
+		String key;
+		Vector<String> guids;
+
+		public Tuple(String key, Vector<String> guids) {
+			super();
+			this.key = key;
+			this.guids = guids;
+		}
+
+		@Override
+		public int compareTo(Tuple o) {
+			return this.key.compareTo(o.key);
 		}
 	}
 
