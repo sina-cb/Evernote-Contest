@@ -13,7 +13,7 @@ public class InputCreator {
 
 	public static void main(String[] args) throws IOException{
 		
-		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("/home/sina/Desktop/output.txt")));
+		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("C:\\Users\\Sina\\Documents\\GitHub\\Evernote-Contest\\src\\output.txt")));
 		
 		for (int i = 0; i < 10000; i++){
 			

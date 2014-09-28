@@ -50,11 +50,22 @@ public class Solution{
 
 		String line = br.readLine();
 		while(line != null){
+			
+			if (line.trim().equals("")){
+				line = br.readLine();
+				continue;
+			}
+			
 			switch (line) {
 			case "CREATE":
 				lines = new Vector<String>();
 				line = br.readLine();
 				while(!line.contains("</note>")){
+					if (line.trim().equals("")){
+						line = br.readLine();
+						continue;
+					}
+					
 					lines.add(line);
 					line = br.readLine();
 				}
@@ -67,6 +78,11 @@ public class Solution{
 				lines = new Vector<String>();
 				line = br.readLine();
 				while(!line.contains("</note>")){
+					if (line.trim().equals("")){
+						line = br.readLine();
+						continue;
+					}
+					
 					lines.add(line);
 					line = br.readLine();
 				}
@@ -102,16 +118,12 @@ public class Solution{
 		int trashedNotes = 0;
 		Vector<Note> notes;
 		Map<String, Integer> guidToPositionIndex;
-		SortedVector dateToGuidIndex;
-		SortedVector tagToGuidIndex;
 
 		public NoteHolder(){
 			notes = new Vector<Solution.Note>();
 			notes.ensureCapacity(1000000);
 
 			guidToPositionIndex = new LinkedHashMap<String, Integer>();
-			dateToGuidIndex = new SortedVector();
-			tagToGuidIndex = new SortedVector();
 		}
 
 		public Note findNoteByGUID(String guid) {
@@ -127,29 +139,36 @@ public class Solution{
 			Vector<Note> results = null;
 
 			String lowerSearchTerm = searchTerm.toLowerCase();
-			String which = "content";
-
-			// Instead of using some cascaded else if structure, I tried to make it more fancier with ? operator! :D
-			which = lowerSearchTerm.startsWith("tag:") ? "tag"   : 
-				lowerSearchTerm.startsWith("created:") ? "date"  : "content";
-
-			switch (which) {
-			case "tag":
-				results = tagSearch(searchTerm);
-				break;
-
-			case "date":
-				results = dateSearch(searchTerm);
-				break;
-
-			case "content":
-				results = contentSearch(searchTerm);
-				break;
-
-			default:
-				//System.out.println("Error: " + which);
-				break;
+			
+			String[] splitted = lowerSearchTerm.split("\\s");
+			
+			Vector<String> contentTerms = new Vector<>();
+			Vector<String> tagTerms = new Vector<>();
+			String dateTerm = "";
+			
+			int index = 0;
+			while (index < splitted.length && !splitted[index].startsWith("tag:") && !splitted[index].startsWith("created:")){
+				contentTerms.add(splitted[index]);
+				index++;
 			}
+			
+			if (index < splitted.length && splitted[index].startsWith("tag:")){
+				tagTerms.add(splitted[index].substring(splitted[index].indexOf(":") + 1));
+				index++;
+				
+				while (index < splitted.length && !splitted[index].startsWith("created:")){	
+					tagTerms.add(splitted[index]);
+					index++;
+				}
+			}
+			
+			if (index < splitted.length){
+				dateTerm = splitted[index].substring(splitted[index].indexOf(":") + 1);
+			}
+			
+			results = contentSearch(contentTerms);
+			results = tagSearch(tagTerms, results);
+			results = dateSearch(dateTerm, results);
 
 			if (results == null || results.size() == 0){
 				bw.write("\n");
@@ -173,78 +192,69 @@ public class Solution{
 
 		}
 
-		private Vector<Note> tagSearch(String searchTerm){
-			Vector<Note> results = new Vector<Note>();
-			Vector<String> guids = null;
-
-			searchTerm = searchTerm.toLowerCase();
-			searchTerm = searchTerm.substring("tag:".length());
-			String[] terms = searchTerm.split("\\s");
-
-			for (String term : terms){
-				Set<String> localGuids = new HashSet<String>();
-				for (int i = 0; i < tagToGuidIndex.size(); i++){
-					String tag = tagToGuidIndex.get(i).key;
-					if (term.endsWith("*")){
-						String tempTerm = term.substring(0, term.length() - 1);
-						String regex = String.format(".*^%s.*|.*\\s%s.*", tempTerm, tempTerm);
-						Matcher m = (Pattern.compile(regex)).matcher((String) tag);
-						if (m.find()){
-							localGuids.addAll(tagToGuidIndex.get(i).guids);
+		private Vector<Note> tagSearch(Vector<String> terms, Vector<Note> finalResults){
+			if (terms == null || terms.size() == 0){
+				return finalResults;
+			}
+			
+			Vector<Note> results = new Vector<>();
+			for (Note note : finalResults){
+				boolean hasAll = true;	
+				int hasCount = 0;
+				for (String term : terms){
+					boolean hasThis = false;
+					for (String tag : note.tags){					
+						if (term.endsWith("*")){
+							String tempTerm = term.substring(0, term.length() - 1);
+							String regex = String.format(".*^%s.*|.*\\s%s.*", tempTerm, tempTerm);
+							Matcher m = (Pattern.compile(regex)).matcher((String) tag);
+							if (m.find()){
+								hasThis = true;
+								hasCount++;
+								break;
+							}
+						}else{
+							String regex = ".*\\b" + term + "\\b.*";
+							Matcher m = (Pattern.compile(regex)).matcher((String) tag);
+							if (m.find()){
+								hasThis = true;
+								hasCount++;
+								break;
+							}
 						}
-					}else{
-						String regex = ".*\\b" + term + "\\b.*";
-						Matcher m = (Pattern.compile(regex)).matcher((String) tag);
-						if (m.find()){
-							localGuids.addAll(tagToGuidIndex.get(i).guids);
-						}
+					}
+					if (!hasThis){
+						hasAll = false;
+						break;
 					}
 				}
 
-				if (guids == null){
-					guids = new Vector<String>();
-					guids.addAll(localGuids);
-				}else{
-					guids.retainAll(localGuids);
-				}
-
-			}
-
-			for (String guid : guids){
-				results.add(findNoteByGUID(guid));
-			}
-
-			if (results.size() == 0){
-				return null;
-			}else{
-				return results;
-			}
-
-		}
-
-		private Vector<Note> dateSearch(String searchTerm){
-			Vector<Note> results = new Vector<Note>();
-			searchTerm = searchTerm.substring("created:".length());
-			for (int i = dateToGuidIndex.size() - 1; i >= 0; i--){
-				if ((dateToGuidIndex.get(i).key).compareTo(searchTerm) >= 0){
-					Vector<String> guids = dateToGuidIndex.get(i).guids;
-
-					for (String guid : guids){
-						results.add(findNoteByGUID(guid));
-					}
+				if (hasAll && hasCount == terms.size()){
+					results.add(note);
 				}
 			}
-
-			if (results.size() == 0){
-				return null;
-			}else{
-				return results;
-			}
+			
+			finalResults.retainAll(results);
+			return finalResults;
 		}
 
-		private Vector<Note> contentSearch(String searchTerm){
+		private Vector<Note> dateSearch(String searchTerm, Vector<Note> finalResult){
+			if (searchTerm == null || searchTerm.equals("")){
+				return finalResult;
+			}
+			
+			Vector<Note> results = new Vector<>();
+			for (Note note : finalResult){
+				if (dateToString(note.getCreated()).compareTo(searchTerm) >= 0){
+					results.add(note);
+				}
+			}
+			finalResult.retainAll(results);
+			return finalResult;
+		}
+
+		private Vector<Note> contentSearch(Vector<String> terms){
 			Vector<Note> results = new Vector<Solution.Note>();
-			String[] terms = searchTerm.toLowerCase().split("\\s");
 
 			for (Note note : notes){
 				if (note.isTrash()){
@@ -253,6 +263,9 @@ public class Solution{
 				boolean hasAll = true;
 				String text = note.content.toLowerCase();
 				for (String term : terms){
+					if (!hasAll){
+						break;
+					}
 					if (term.endsWith("*")){
 						term = term.substring(0, term.length() - 1);
 						String regex = String.format(".*^%s.*|.*\\s%s.*", term, term);
@@ -280,7 +293,6 @@ public class Solution{
 			Note targetNote = findNoteByGUID(guid);
 
 			if (targetNote == null){
-				//System.out.println("Error: Note not found to delete.");
 				return;
 			}
 
@@ -290,7 +302,6 @@ public class Solution{
 		public void updateNote(Note updatedNote) {
 			Note oldNote = findNoteByGUID(updatedNote.getGuid());
 			if (oldNote == null){
-				//System.out.println("Error: Note not found to update.");
 				return;
 			}
 
@@ -308,43 +319,9 @@ public class Solution{
 			target.setTrash(true);
 			guidToPositionIndex.remove(target.getGuid());
 
-			int tempIndex = dateToGuidIndex.indexOf(new Tuple(dateToString(target.getCreated()), null));
-			Vector<String> bucket = null;
-			int deletionIndex = -1;
-			if (tempIndex >= 0){
-				bucket = dateToGuidIndex.get(tempIndex).guids;
-				for (int i = 0; i < bucket.size(); i++){
-					if (bucket.get(i).equals(target.getGuid())){
-						deletionIndex = i;
-						break;
-					}
-				}
-				if (deletionIndex >= 0){
-					bucket.remove(deletionIndex);
-				}
-			}
-
-			for (String tag : target.getTags()){
-				tempIndex = tagToGuidIndex.indexOf(new Tuple(tag, null));
-				if(tempIndex >= 0){
-					bucket = tagToGuidIndex.get(tempIndex).guids;
-					deletionIndex = -1;
-					for (int i = 0; i < bucket.size(); i++){
-						if (bucket.get(i).equals(target.getGuid())){
-							deletionIndex = i;
-							break;
-						}
-					}
-					if (deletionIndex >= 0){
-						bucket.remove(deletionIndex);
-					}
-				}
-			}
-
 			trashedNotes++;
 		}
 
-		//TODO: I never checked this method to see if it works fine or not.
 		private void emptyTrashedNotes(){
 			Vector<Note> onlyValidNotes = new Vector<Solution.Note>();
 
@@ -364,33 +341,7 @@ public class Solution{
 
 		public void addNewNote(Note note){
 			notes.add(note);
-
 			guidToPositionIndex.put(note.getGuid(), notes.size() - 1);
-
-			int tempIndex = dateToGuidIndex.indexOf(new Tuple(dateToString(note.getCreated()), null));
-			Vector<String> bucket = null;
-			if (tempIndex < 0){
-				bucket = new Vector<String>();
-				bucket.add(note.getGuid());
-				dateToGuidIndex.insert(new Tuple(dateToString(note.getCreated()), bucket));
-			}else{
-				bucket = dateToGuidIndex.get(tempIndex).guids;
-				bucket.add(note.getGuid());
-			}
-
-			for (String tag : note.getTags()){
-				tempIndex = tagToGuidIndex.indexOf(new Tuple(tag, null));
-
-				if (tempIndex < 0){
-					bucket = new Vector<String>();
-					bucket.add(note.getGuid());
-					tagToGuidIndex.insert(new Tuple(tag, bucket));
-				}else{
-					bucket = tagToGuidIndex.get(tempIndex).guids;
-					bucket.add(note.getGuid());
-				}
-			}
-
 		}
 
 		@SuppressWarnings("unused")
@@ -519,10 +470,6 @@ public class Solution{
 			}
 		}
 
-		public Vector<String> getTags() {
-			return tags;
-		}
-
 		public void addTag(String tag) {
 			tags.add(tag);
 		}
@@ -561,57 +508,6 @@ public class Solution{
 
 		public void setTrash(boolean trash) {
 			this.trash = trash;
-		}
-	}
-
-	private class SortedVector extends Vector<Tuple>{
-
-		private static final long serialVersionUID = 3871496867211582390L;
-
-		public void insert(Tuple element){
-			add(element);
-			Collections.sort(this);
-		}
-
-		@Override
-		public int indexOf(Object o) {
-			return binary_search(this, (Tuple) o, 0, size() - 1);
-		}
-
-		private int binary_search(Vector<Tuple> array, Tuple key, int start, int end){
-			if (size() == 0){
-				return -1;
-			}
-			
-			while (end >= start){
-				int mid = ((end + start) / 2);
-
-				if(array.get(mid).compareTo(key) == 0){
-					return mid;
-				}else if (array.get(mid).compareTo(key) < 0){
-					start = mid + 1;
-				}else {
-					end = mid - 1;
-				}
-			}
-			return -1;
-		}
-
-	}
-
-	private class Tuple implements Comparable<Tuple>{
-		String key;
-		Vector<String> guids;
-
-		public Tuple(String key, Vector<String> guids) {
-			super();
-			this.key = key;
-			this.guids = guids;
-		}
-
-		@Override
-		public int compareTo(Tuple o) {
-			return this.key.compareTo(o.key);
 		}
 	}
 
