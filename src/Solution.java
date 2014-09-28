@@ -15,8 +15,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.TreeMap;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,7 +41,7 @@ public class Solution{
 	public void run() throws IOException {
 		long firstTime = System.currentTimeMillis();
 
-		BufferedReader br = new BufferedReader(new FileReader(new File("C:\\Users\\Sina\\Documents\\GitHub\\Evernote Contest\\src\\input.txt")));
+		BufferedReader br = new BufferedReader(new FileReader(new File("C:\\Users\\Sina\\Documents\\GitHub\\Evernote-Contest\\src\\input.txt")));
 		//BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 
 		/* This list is used to read all lines of the <note> tag and process them all together.
@@ -99,7 +101,7 @@ public class Solution{
 	private class NoteHolder{
 		int trashedNotes = 0;
 		Vector<Note> notes;
-		HashMap<String, Integer> guidToPositionIndex;
+		Map<String, Integer> guidToPositionIndex;
 		SortedVector dateToGuidIndex;
 		SortedVector tagToGuidIndex;
 
@@ -107,7 +109,7 @@ public class Solution{
 			notes = new Vector<Solution.Note>();
 			notes.ensureCapacity(1000000);
 
-			guidToPositionIndex = new HashMap<String, Integer>();
+			guidToPositionIndex = new LinkedHashMap<String, Integer>();
 			dateToGuidIndex = new SortedVector();
 			tagToGuidIndex = new SortedVector();
 		}
@@ -175,6 +177,7 @@ public class Solution{
 			Vector<Note> results = new Vector<Note>();
 			Vector<String> guids = null;
 
+			searchTerm = searchTerm.toLowerCase();
 			searchTerm = searchTerm.substring("tag:".length());
 			String[] terms = searchTerm.split("\\s");
 
@@ -357,7 +360,6 @@ public class Solution{
 			for (int i = 0; i < onlyValidNotes.size(); i++){
 				guidToPositionIndex.put(notes.get(i).getGuid(), (Integer) i);
 			}
-
 		}
 
 		public void addNewNote(Note note){
@@ -394,6 +396,7 @@ public class Solution{
 		@SuppressWarnings("unused")
 		private Date stringToDate(String str){
 			DateFormat format = new SimpleDateFormat("yyyyMMdd");
+			format.setTimeZone(TimeZone.getTimeZone("UTC"));
 			try {
 				return format.parse(str);
 			} catch (ParseException e) {
@@ -404,6 +407,7 @@ public class Solution{
 
 		private String dateToString(Date date){
 			DateFormat format = new SimpleDateFormat("yyyyMMdd");
+			format.setTimeZone(TimeZone.getTimeZone("UTC"));
 			return format.format(date);
 		}
 
@@ -441,7 +445,7 @@ public class Solution{
 
 			// Read and add all tags to the new note
 			while (lines.get(index).contains("<tag>")){
-				addTag(removeStringTags(lines.get(index).trim(), "tag"));
+				addTag(removeStringTags(lines.get(index).trim(), "tag").replace(":", "").toLowerCase());
 				index++;
 			}
 
